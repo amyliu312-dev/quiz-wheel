@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Innovation Quiz Wheel Prototype</title>
+<style>
+  :root{
+    --bg:#08111f;
+    --panel:#101b2d;
+    --panel2:#16243a;
+    --text:#f7fbff;
+    --muted:#a9b7cb;
+    --accent:#63b3ff;
+    --accent2:#8b5cf6;
+    --good:#42d392;
+    --bad:#ff6b6b;
+    --gold:#ffd166;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: Inter, "Noto Sans TC", system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(99,179,255,.16), transparent 28%),
+      radial-gradient(circle at 80% 10%, rgba(139,92,246,.14), transparent 28%),
+      linear-gradient(180deg, #07101c, #0a1423 55%, #08111f);
+    color:var(--text);
+    min-height:100vh;
+  }
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    padding:28px 18px 40px;
+  }
+  header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:18px;
+    margin-bottom:24px;
+  }
+  h1{
+    margin:0;
+    font-size:clamp(28px,4vw,48px);
+    letter-spacing:-.04em;
+  }
+  .sub{
+    color:var(--muted);
+    margin-top:8px;
+    line-height:1.6;
+  }
+  .score{
+    min-width:160px;
+    padding:14px 18px;
+    border:1px solid rgba(255,255,255,.09);
+    background:rgba(255,255,255,.05);
+    border-radius:18px;
+    text-align:center;
+    backdrop-filter:blur(8px);
+  }
+  .score strong{
+    display:block;
+    font-size:34px;
+    margin-top:4px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:minmax(420px,1.1fr) minmax(320px,.9fr);
+    gap:22px;
+  }
+  .card{
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.035));
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:24px;
+    padding:22px;
+    box-shadow:0 20px 60px rgba(0,0,0,.25);
+  }
+  .wheel-wrap{
+    position:relative;
+    width:min(88vw,520px);
+    aspect-ratio:1;
+    margin:8px auto 20px;
+    display:grid;
+    place-items:center;
+  }
+  .pointer{
+    position:absolute;
+    top:-2px;
+    left:50%;
+    transform:translateX(-50%);
+    width:0;height:0;
+    border-left:20px solid transparent;
+    border-right:20px solid transparent;
+    border-top:0;
+    border-bottom:42px solid var(--gold);
+    filter:drop-shadow(0 6px 8px rgba(0,0,0,.35));
+    z-index:5;
+  }
+  canvas{
+    width:100%;
+    height:100%;
+    filter:drop-shadow(0 14px 24px rgba(0,0,0,.35));
+  }
+  .hub{
+    position:absolute;
+    width:92px;height:92px;
+    border-radius:50%;
+    background:linear-gradient(145deg,#f8fbff,#9ac8ff);
+    color:#0b1422;
+    display:grid;
+    place-items:center;
+    font-weight:900;
+    font-size:15px;
+    border:8px solid rgba(255,255,255,.5);
+    box-shadow:0 8px 18px rgba(0,0,0,.25);
+    pointer-events:none;
+  }
+  .controls{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  button{
+    appearance:none;
+    border:0;
+    border-radius:14px;
+    padding:13px 18px;
+    font-weight:800;
+    font-size:15px;
+    cursor:pointer;
+    transition:.2s ease;
+  }
+  button:hover{ transform:translateY(-1px) }
+  button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .primary{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:white;
+    min-width:160px;
+    box-shadow:0 10px 24px rgba(99,179,255,.18);
+  }
+  .ghost{
+    background:rgba(255,255,255,.08);
+    color:var(--text);
+    border:1px solid rgba(255,255,255,.08);
+  }
+  .status{
+    text-align:center;
+    color:var(--muted);
+    margin-top:14px;
+    min-height:24px;
+  }
+  .quiz-empty{
+    color:var(--muted);
+    line-height:1.8;
+    padding:14px 4px;
+  }
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 11px;
+    border-radius:999px;
+    background:rgba(99,179,255,.12);
+    color:#bfe0ff;
+    border:1px solid rgba(99,179,255,.18);
+    font-size:13px;
+    font-weight:800;
+  }
+  .question{
+    font-size:24px;
+    line-height:1.45;
+    margin:18px 0;
+    font-weight:900;
+  }
+  .answers{
+    display:grid;
+    gap:10px;
+  }
+  .answer{
+    text-align:left;
+    width:100%;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.08);
+    color:white;
+    padding:14px 16px;
+    border-radius:14px;
+  }
+  .answer.correct{
+    background:rgba(66,211,146,.18);
+    border-color:rgba(66,211,146,.45);
+  }
+  .answer.wrong{
+    background:rgba(255,107,107,.17);
+    border-color:rgba(255,107,107,.42);
+  }
+  .feedback{
+    margin-top:16px;
+    min-height:46px;
+    line-height:1.6;
+    font-weight:800;
+  }
+  .feedback.good{color:#88efbd}
+  .feedback.bad{color:#ff9c9c}
+  .meta{
+    margin-top:22px;
+    padding-top:18px;
+    border-top:1px solid rgba(255,255,255,.08);
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.7;
+  }
+  .legend{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+    margin-top:18px;
+  }
+  .legend div{
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.06);
+    padding:11px 12px;
+    border-radius:12px;
+    color:#d7e2ef;
+    font-size:13px;
+  }
+  @media (max-width:900px){
+    header{align-items:flex-start;flex-direction:column}
+    .grid{grid-template-columns:1fr}
+    .wheel-wrap{width:min(92vw,500px)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Innovation Quiz Wheel</h1>
+      <div class="sub">轉盤決定題型，答對加分。這是一個可直接修改題目、獎項與分類的活動 prototype。</div>
+    </div>
+    <div class="score">目前得分<strong id="score">0</strong></div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <div class="wheel-wrap">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="700" height="700"></canvas>
+        <div class="hub">SPIN</div>
+      </div>
+      <div class="controls">
+        <button class="primary" id="spinBtn">開始轉盤</button>
+        <button class="ghost" id="resetBtn">重新開始</button>
+      </div>
+      <div class="status" id="status">按下開始，看看今天抽到哪一題。</div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="card" id="quizCard">
+      <div class="quiz-empty" id="emptyState">
+        <strong style="color:white;font-size:20px">等待抽題</strong><br>
+        轉盤停下後，右側會出現題目。<br><br>
+        目前示範包含 AI、6G、HR、Innovation、Bonus、Challenge 類別。
+      </div>
+
+      <div id="quiz" hidden>
+        <span class="badge" id="categoryBadge">AI</span>
+        <div class="question" id="questionText"></div>
+        <div class="answers" id="answers"></div>
+        <div class="feedback" id="feedback"></div>
+        <button class="ghost" id="nextBtn" style="margin-top:8px" hidden>下一輪</button>
+      </div>
+
+      <div class="meta">
+        Prototype 行為：轉盤 → 顯示題目 → 作答 → 顯示結果 → 下一輪。<br>
+        你可以直接在 HTML 最下方的 <code>segments</code> 與 <code>questionBank</code> 修改題目內容。
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const segments = [
+  { label:"AI", color:"#2563eb" },
+  { label:"6G", color:"#7c3aed" },
+  { label:"HR", color:"#0891b2" },
+  { label:"Innovation", color:"#0f766e" },
+  { label:"Bonus", color:"#ca8a04" },
+  { label:"Challenge", color:"#dc2626" },
+  { label:"AI", color:"#4f46e5" },
+  { label:"Lucky", color:"#059669" }
+];
+
+const questionBank = {
+  AI: [
+    {
+      q:"下列哪一項最符合 Agentic AI 的概念？",
+      options:["只會回答固定 FAQ","能依目標規劃、使用工具並執行多步任務","只能產生圖片","只能做文字摘要"],
+      answer:1,
+      note:"Agentic AI 的核心在於能以目標為導向，規劃並採取多步驟行動。"
+    },
+    {
+      q:"LLM 中的 RAG 主要用來做什麼？",
+      options:["增加螢幕更新率","把外部知識檢索結果提供給模型生成","壓縮圖片","提升網路頻寬"],
+      answer:1,
+      note:"RAG 是 Retrieval-Augmented Generation，重點是先檢索再生成。"
+    }
+  ],
+  "6G":[
+    {
+      q:"6G 常被討論的一項能力 ISAC，I 代表什麼？",
+      options:["Integrated","Intelligent","Internet","Interactive"],
+      answer:0,
+      note:"ISAC 常指 Integrated Sensing and Communication。"
+    }
+  ],
+  HR:[
+    {
+      q:"在人才發展中，哪一種指標最能反映課程是否真的產生工作影響？",
+      options:["報名人數","課程時數","學習後的行為與績效改變","講師投影片頁數"],
+      answer:2,
+      note:"若要看 business impact，不能只停留在出席與滿意度。"
+    }
+  ],
+  Innovation:[
+    {
+      q:"創新專案早期最值得優先驗證的是什麼？",
+      options:["Logo 顏色","主管座位","關鍵假設是否成立","會議室大小"],
+      answer:2,
+      note:"先驗證高風險假設，能更快降低不確定性。"
+    }
+  ],
+  Bonus:[
+    {
+      q:"BONUS！這一題答對可得 20 分：哪一個做法最適合快速測試活動互動概念？",
+      options:["先做完整正式系統","先做可操作 prototype","先寫 100 頁規格","先買伺服器"],
+      answer:1,
+      note:"Prototype 的價值就是快速驗證互動流程與使用者反應。",
+      points:20
+    }
+  ],
+  Challenge:[
+    {
+      q:"Challenge：若抽獎機制必須『每個人機率相同』，最重要的是什麼？",
+      options:["轉盤看起來轉很久","畫面有很多動畫","隨機邏輯不能被偏置","背景音樂夠大聲"],
+      answer:2,
+      note:"公平抽獎的核心是隨機邏輯與規則透明，而不是視覺效果。"
+    }
+  ],
+  Lucky:[
+    {
+      q:"Lucky！直接送你 10 分，要不要收下？",
+      options:["當然要","還是要","一定要","全部都對"],
+      answer:3,
+      note:"Lucky 格就是讓現場氣氛升溫。",
+      points:10
+    }
+  ]
+};
+
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+const spinBtn = document.getElementById("spinBtn");
+const resetBtn = document.getElementById("resetBtn");
+const statusEl = document.getElementById("status");
+const scoreEl = document.getElementById("score");
+const legendEl = document.getElementById("legend");
+const emptyState = document.getElementById("emptyState");
+const quiz = document.getElementById("quiz");
+const categoryBadge = document.getElementById("categoryBadge");
+const questionText = document.getElementById("questionText");
+const answersEl = document.getElementById("answers");
+const feedback = document.getElementById("feedback");
+const nextBtn = document.getElementById("nextBtn");
+
+let rotation = 0;
+let spinning = false;
+let score = 0;
+let currentQuestion = null;
+let answered = false;
+
+function drawWheel(){
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const radius = 318;
+  const step = Math.PI*2/segments.length;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(rotation);
+
+  segments.forEach((seg,i)=>{
+    const start = -Math.PI/2 + i*step;
+    const end = start + step;
+
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.arc(0,0,radius,start,end);
+    ctx.closePath();
+    ctx.fillStyle=seg.color;
+    ctx.fill();
+
+    ctx.strokeStyle="rgba(255,255,255,.5)";
+    ctx.lineWidth=3;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.rotate(start + step/2);
+    ctx.translate(radius*0.64,0);
+    ctx.rotate(Math.PI/2);
+    ctx.fillStyle="#fff";
+    ctx.font="800 28px system-ui";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.fillText(seg.label,0,0);
+    ctx.restore();
+  });
+
+  ctx.beginPath();
+  ctx.arc(0,0,radius+8,0,Math.PI*2);
+  ctx.strokeStyle="rgba(255,255,255,.78)";
+  ctx.lineWidth=10;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function buildLegend(){
+  legendEl.innerHTML = segments.map(s=>`<div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.color};margin-right:8px"></span>${s.label}</div>`).join("");
+}
+
+function spin(){
+  if(spinning) return;
+  spinning = true;
+  answered = false;
+  spinBtn.disabled = true;
+  nextBtn.hidden = true;
+  feedback.textContent = "";
+  quiz.hidden = true;
+  emptyState.hidden = false;
+  statusEl.textContent = "轉盤旋轉中…";
+
+  const selected = Math.floor(Math.random()*segments.length);
+  const step = Math.PI*2/segments.length;
+
+  // 讓 selected 格中心停在正上方指針
+  const desired = -(selected*step + step/2);
+  const currentMod = ((rotation % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+  let delta = desired - currentMod;
+  while(delta < 0) delta += Math.PI*2;
+
+  const extraTurns = 6 + Math.floor(Math.random()*3);
+  const totalDelta = extraTurns*Math.PI*2 + delta;
+
+  const start = rotation;
+  const end = rotation + totalDelta;
+  const duration = 4200;
+  const t0 = performance.now();
+
+  function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
+
+  function animate(now){
+    const t = Math.min((now-t0)/duration,1);
+    rotation = start + (end-start)*easeOutCubic(t);
+    drawWheel();
+
+    if(t<1){
+      requestAnimationFrame(animate);
+    }else{
+      spinning=false;
+      spinBtn.disabled=false;
+      const seg = segments[selected];
+      statusEl.textContent = `抽到：${seg.label}`;
+      showQuestion(seg.label);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+function getQuestion(category){
+  const list = questionBank[category] || questionBank.AI;
+  return list[Math.floor(Math.random()*list.length)];
+}
+
+function showQuestion(category){
+  currentQuestion = {...getQuestion(category), category};
+  answered = false;
+
+  emptyState.hidden = true;
+  quiz.hidden = false;
+  categoryBadge.textContent = category;
+  questionText.textContent = currentQuestion.q;
+  feedback.className = "feedback";
+  feedback.textContent = "";
+  answersEl.innerHTML = "";
+
+  currentQuestion.options.forEach((opt,index)=>{
+    const btn = document.createElement("button");
+    btn.className = "answer";
+    btn.textContent = `${String.fromCharCode(65+index)}. ${opt}`;
+    btn.onclick = ()=>answer(index,btn);
+    answersEl.appendChild(btn);
+  });
+}
+
+function answer(index,clicked){
+  if(answered) return;
+  answered=true;
+  const buttons=[...answersEl.querySelectorAll(".answer")];
+
+  buttons.forEach((b,i)=>{
+    b.disabled=true;
+    if(i===currentQuestion.answer) b.classList.add("correct");
+  });
+
+  if(index===currentQuestion.answer){
+    const pts=currentQuestion.points || 10;
+    score += pts;
+    scoreEl.textContent = score;
+    feedback.className="feedback good";
+    feedback.textContent=`答對了！+${pts} 分。${currentQuestion.note || ""}`;
+  }else{
+    clicked.classList.add("wrong");
+    feedback.className="feedback bad";
+    feedback.textContent=`答錯了。${currentQuestion.note || ""}`;
+  }
+  nextBtn.hidden=false;
+}
+
+function reset(){
+  score=0;
+  scoreEl.textContent=0;
+  rotation=0;
+  drawWheel();
+  statusEl.textContent="按下開始，看看今天抽到哪一題。";
+  quiz.hidden=true;
+  emptyState.hidden=false;
+  nextBtn.hidden=true;
+  feedback.textContent="";
+}
+
+spinBtn.addEventListener("click",spin);
+resetBtn.addEventListener("click",reset);
+nextBtn.addEventListener("click",()=>{
+  quiz.hidden=true;
+  emptyState.hidden=false;
+  statusEl.textContent="準備好了，開始下一輪。";
+});
+
+buildLegend();
+drawWheel();
+</script>
+</body>
+</html>
